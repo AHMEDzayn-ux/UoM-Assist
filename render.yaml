@@ -27,7 +27,7 @@ services:
     runtime: static
     branch: main
     rootDir: frontend
-    buildCommand: npm install && npm run build
+    buildCommand: npm install && node node_modules/vite/bin/vite.js build
     staticPublishPath: dist
     envVars:
       - key: VITE_API_URL
