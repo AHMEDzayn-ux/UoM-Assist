@@ -34,6 +34,17 @@ python-dotenv>=1.0.0
 # Database
 sqlalchemy>=2.0.25
 
+# Auth (used by services/auth_service.py - previously undeclared, installed
+# transitively/manually in local venv only, which is why Render's clean
+# install crashed on import)
+bcrypt>=4.1.2
+PyJWT>=2.8.0
+
+# Voice / TTS (lazy-imported in services/tts_service.py; without it the app
+# silently falls back to browser TTS instead of crashing, but this makes it
+# actually work in production)
+edge-tts>=7.0.0
+
 # Testing
 pytest>=7.4.4
 pytest-cov>=4.1.0
