@@ -10,7 +10,6 @@ import VoiceCall from '../components/VoiceCall';
 import EscalationInbox from '../components/EscalationInbox';
 import RequestsInbox from '../components/RequestsInbox';
 import InsightsPanel from '../components/InsightsPanel';
-import PortalAdmins from '../components/PortalAdmins';
 import Icon from '../components/Icon';
 import './AdminConsole.css';
 
@@ -19,7 +18,6 @@ const TABS = [
     { key: 'insights', label: 'Insights', icon: 'chart' },
     { key: 'inbox', label: 'Inbox', icon: 'inbox' },
     { key: 'requests', label: 'Requests', icon: 'ticket' },
-    { key: 'admins', label: 'Admin logins', icon: 'user' },
     { key: 'deploy', label: 'Deploy', icon: 'link' },
     { key: 'whatsapp', label: 'WhatsApp', icon: 'message' },
     { key: 'test', label: 'Test chat', icon: 'sparkle' },
@@ -93,7 +91,6 @@ const AdminConsole = () => {
                                 {tab === 'insights' && <InsightsPanel slug={selectedClient} />}
                                 {tab === 'inbox' && <EscalationInbox slug={selectedClient} />}
                                 {tab === 'requests' && <RequestsInbox slug={selectedClient} />}
-                                {tab === 'admins' && <PortalAdmins slug={selectedClient} />}
                                 {tab === 'deploy' && <DeployPanel slug={selectedClient} />}
                                 {tab === 'whatsapp' && <WhatsAppConfig slug={selectedClient} />}
                                 {tab === 'test' && (

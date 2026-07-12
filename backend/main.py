@@ -26,7 +26,6 @@ from api.voice import router as voice_router
 from api.public import router as public_router
 from api.meta import router as meta_router
 from api.auth_routes import router as auth_router
-from api.portal import router as portal_router
 from integrations.whatsapp_bot import router as whatsapp_router
 from config import settings
 from security import SecurityMiddleware
@@ -126,7 +125,6 @@ app.include_router(documents_router)
 app.include_router(query_router)
 app.include_router(voice_router)
 app.include_router(whatsapp_router)
-app.include_router(portal_router)
 
 
 @app.get("/widget.js")

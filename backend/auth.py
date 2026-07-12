@@ -40,18 +40,3 @@ def require_admin(
             headers={"WWW-Authenticate": "Bearer"},
         )
     return user
-
-
-def require_portal(
-    slug: str,
-    user: User = Depends(require_admin),
-) -> User:
-    """Auth + tenant isolation for the per-client admin portal (/api/portal/{slug}).
-
-    Authorizes a superadmin (sees any tenant) or the client_admin bound to THIS
-    tenant. Anyone else gets a 404 so one client's staff can never see another's
-    data — mirrors ``owned_client`` in api/clients.py.
-    """
-    if user.is_superadmin or user.client_slug == slug:
-        return user
-    raise HTTPException(status_code=404, detail=f"Portal '{slug}' not found")

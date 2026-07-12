@@ -70,7 +70,6 @@ def init_db() -> None:
     """Create all tables + backfill new columns. Safe to call on every startup."""
     # Import models so they register on Base.metadata before create_all.
     import db_models  # noqa: F401
-    import telecom_models  # noqa: F401  (enterprise telecom BSS/OSS tables)
 
     Base.metadata.create_all(bind=engine)
     _add_missing_columns()

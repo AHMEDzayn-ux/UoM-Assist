@@ -105,27 +105,6 @@ def authenticate(db: Session, email: str, password: str) -> Optional[User]:
     return None
 
 
-# ---- Per-client admin accounts (portal logins) ------------------------------
-
-def create_client_admin(db: Session, slug: str, email: str, password: str,
-                        name: str = "") -> User:
-    """Create a client_admin login bound to one tenant (its /portal/{slug} console)."""
-    return create_user(
-        db, email=email, password=password, name=name,
-        is_superadmin=False, role="client_admin", client_slug=slug,
-    )
-
-
-def list_client_admins(db: Session, slug: str) -> list:
-    """All client_admin users scoped to this tenant."""
-    return (
-        db.query(User)
-        .filter(User.client_slug == slug, User.role == "client_admin")
-        .order_by(User.created_at.desc())
-        .all()
-    )
-
-
 def delete_user(db: Session, user_id: int) -> bool:
     user = db.get(User, user_id)
     if user is None:

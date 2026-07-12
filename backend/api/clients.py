@@ -31,9 +31,6 @@ from api.models import (
     ActionStatusRequest,
     AccountResponse,
     AccountListResponse,
-    ClientAdminCreate,
-    ClientAdminResponse,
-    ClientAdminListResponse,
 )
 from services.rag_pipeline import MultiClientRAGPipeline
 from services import client_store, learning, auth_service
@@ -417,64 +414,3 @@ async def seed_accounts(
         AccountResponse(id=r.id, identifier=r.identifier, name=r.name, data=r.data or {})
         for r in rows
     ])
-
-
-# ---- Per-client admin logins (portal accounts) ------------------------------
-# The operator mints a scoped login for each client; that client's staff sign in
-# at /portal/{slug} and only ever see their own tenant (require_portal enforces it).
-
-def _admin_to_response(u: User) -> ClientAdminResponse:
-    return ClientAdminResponse(
-        id=u.id, email=u.email, name=u.name,
-        created_at=u.created_at.isoformat() if u.created_at else "",
-    )
-
-
-@router.get("/{slug}/admins", response_model=ClientAdminListResponse)
-async def list_client_admins(
-    slug: str,
-    db: Session = Depends(get_db),
-    _owned: Client = Depends(owned_client),
-):
-    """List the portal admin logins for this client."""
-    admins = auth_service.list_client_admins(db, slug)
-    return ClientAdminListResponse(
-        admins=[_admin_to_response(u) for u in admins],
-        portal_url=f"/portal/{slug}",
-    )
-
-
-@router.post("/{slug}/admins", response_model=ClientAdminResponse,
-             status_code=status.HTTP_201_CREATED)
-async def create_client_admin(
-    slug: str,
-    payload: ClientAdminCreate,
-    db: Session = Depends(get_db),
-    _owned: Client = Depends(owned_client),
-):
-    """Create a portal admin login bound to this client."""
-    email = (payload.email or "").strip().lower()
-    if "@" not in email:
-        raise HTTPException(status_code=400, detail="A valid email is required")
-    if auth_service.get_user_by_email(db, email):
-        raise HTTPException(status_code=409, detail="An account with that email already exists")
-    user = auth_service.create_client_admin(
-        db, slug=slug, email=email, password=payload.password, name=payload.name,
-    )
-    logger.info(f"Created client_admin {email} for {slug}")
-    return _admin_to_response(user)
-
-
-@router.delete("/{slug}/admins/{user_id}", response_model=MessageResponse)
-async def delete_client_admin(
-    slug: str,
-    user_id: int,
-    db: Session = Depends(get_db),
-    _owned: Client = Depends(owned_client),
-):
-    """Revoke a portal admin login. Only removes admins bound to THIS client."""
-    user = auth_service.get_user(db, user_id)
-    if user is None or user.client_slug != slug or user.role != "client_admin":
-        raise HTTPException(status_code=404, detail="Admin login not found")
-    auth_service.delete_user(db, user_id)
-    return MessageResponse(message="Admin login removed", detail=f"#{user_id}")

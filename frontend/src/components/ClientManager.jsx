@@ -80,11 +80,11 @@ const ClientManager = ({ onClientSelect, selectedClient }) => {
 
             <form onSubmit={handleCreate} className="create-client-form">
                 <label>Name
-                    <input type="text" placeholder="e.g. Nexus Telecom" value={form.name}
+                    <input type="text" placeholder="e.g. Acme Support" value={form.name}
                         onChange={(e) => onNameChange(e.target.value)} disabled={loading} />
                 </label>
                 <label>Slug (URL id)
-                    <input type="text" placeholder="nexus-telecom" value={form.slug}
+                    <input type="text" placeholder="acme-support" value={form.slug}
                         onChange={(e) => { setSlugEdited(true); setField('slug', slugify(e.target.value)); }}
                         disabled={loading} />
                 </label>
