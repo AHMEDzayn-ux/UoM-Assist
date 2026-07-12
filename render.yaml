@@ -1,17 +1,19 @@
-# Backend now runs on DigitalOcean App Platform (see .do/app.yaml) - Render's Python
-# free tier couldn't fit the embedding + reranker models in 512MB. This file only
-# hosts the frontend static site now.
+# Backend runs on DigitalOcean App Platform (see .do/app.yaml) - Render's Python
+# free tier couldn't fit the embedding model in 512MB. This file only hosts the
+# frontend static site.
 services:
   - type: web
-    name: rag-frontend
+    name: uom-frontend
     runtime: static
     branch: main
     rootDir: frontend
     buildCommand: npm install && node node_modules/vite/bin/vite.js build
     staticPublishPath: dist
     envVars:
+      # Set this to your DO backend URL once the backend app is deployed
+      # (Apps -> uom-backend -> the ondigitalocean.app domain).
       - key: VITE_API_URL
-        value: https://nexus-backend-7yq3e.ondigitalocean.app
+        value: https://REPLACE-WITH-uom-backend.ondigitalocean.app
     routes:
       - type: rewrite
         source: /*

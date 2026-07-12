@@ -35,6 +35,42 @@ from services.client_store import reconcile_disk_collections
 logger = get_logger(__name__)
 
 
+def _seed_uom(db):
+    """Guarantee the shipped 'uom' knowledge base presents as a University of
+    Moratuwa (domain=university) client with a portal client-admin.
+
+    The ~25MB uom FAISS index ships inside the image, so on a fresh container
+    reconcile_disk_collections() imports it — but as the *generic* domain. This
+    idempotent seed promotes it to the university template (correct persona,
+    bot name, greeting, and university action tools) and ensures a client-admin
+    exists (credentials from env, so nothing sensitive lives in git). Once the
+    domain is 'university' the promotion block is skipped, preserving any later
+    edits an operator makes in the Admin Console.
+    """
+    import os
+    from services.client_store import get_client, update_client
+    from services.auth_service import get_user_by_email, create_user
+    from domain_templates import get_template
+
+    uom = get_client(db, "uom")
+    if uom is None:
+        return  # index not present in this build; nothing to seed
+    if uom.domain != "university":
+        tpl = get_template("university")
+        update_client(db, "uom", domain="university", persona=None,
+                      name="University of Moratuwa",
+                      bot_name=tpl.bot_name, greeting=tpl.greeting)
+        logger.info("Seeded 'uom' client as domain=university")
+
+    admin_email = os.getenv("UOM_ADMIN_EMAIL", "uom-admin@uom.lk")
+    if not get_user_by_email(db, admin_email):
+        create_user(db, email=admin_email,
+                    password=os.getenv("UOM_ADMIN_PASSWORD", "UoM@Admin2026"),
+                    name="UoM Portal Admin", role="client_admin",
+                    client_slug="uom")
+        logger.info(f"Created uom client-admin: {admin_email}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup: ensure DB tables exist and import pre-existing on-disk clients."""
@@ -47,6 +83,7 @@ async def lifespan(app: FastAPI):
         # Seed the first operator account (claims any legacy clients).
         from services.auth_service import bootstrap_admin
         bootstrap_admin(db)
+        _seed_uom(db)
     except Exception as e:
         logger.error(f"Startup reconciliation failed: {e}")
     finally:

@@ -1,15 +1,18 @@
-name: nexus-backend
+name: uom-backend
 region: nyc
 services:
   - name: backend
     github:
-      repo: AHMEDzayn-ux/RAG-new
+      repo: AHMEDzayn-ux/UoM-Assist
       branch: main
       deploy_on_push: true
     source_dir: backend
     dockerfile_path: backend/Dockerfile
     http_port: 8080
-    instance_size_slug: basic-xs # ~1GB RAM - verify slug/price in the DO console, naming shifts over time
+    # ~2GB RAM. The 512MB/1GB tiers OOM'd for Nexus (embedding + models don't
+    # fit); 2GB is the proven size. Verify the exact slug/price in the DO console
+    # (DO renames these over time — pick the ~2GB "Basic" or "Professional" tier).
+    instance_size_slug: basic-s
     instance_count: 1
     envs:
       - key: ENVIRONMENT
@@ -18,8 +21,12 @@ services:
       - key: LOG_LEVEL
         value: INFO
         scope: RUN_TIME
+      # The ~25MB uom FAISS index + rag_system.db (uom client, domain=university)
+      # ship inside the image, so the assistant works on first boot with no
+      # ingestion step. At 2GB you can flip this to "true" for cross-encoder
+      # re-ranking (better answers); it was "false" only because 1GB was too tight.
       - key: USE_RERANKING
-        value: "false" # 1GB is tight for both embedding + reranker models loaded together (~1.2-1.6GB combined) - flip to "true" if you upgrade to a 2GB+ instance
+        value: "false"
         scope: RUN_TIME
       - key: GROQ_API_KEY
         type: SECRET
