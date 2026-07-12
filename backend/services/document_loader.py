@@ -25,6 +25,7 @@ import json
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field, asdict
 from pypdf import PdfReader
+import pdfplumber
 
 from logger import get_logger
 
@@ -1417,10 +1418,74 @@ class ProductionChunker:
         }
 
 
+def _render_markdown_table(rows: List[List[Optional[str]]]) -> str:
+    """Render a pdfplumber-extracted table (list of rows of cells) as a GitHub-style
+    markdown pipe table, so ``ProductionChunker.is_table_content()`` recognizes it
+    and keeps it as one atomic, unsplit chunk."""
+    def clean(cell) -> str:
+        if cell is None:
+            return ""
+        return str(cell).replace("|", "\\|").replace("\n", " ").strip()
+
+    cleaned = [[clean(c) for c in row] for row in rows if row]
+    if not cleaned:
+        return ""
+    n_cols = max(len(r) for r in cleaned)
+    for r in cleaned:
+        r.extend([""] * (n_cols - len(r)))
+
+    header, *data_rows = cleaned
+    lines = [
+        "| " + " | ".join(header) + " |",
+        "|" + "|".join(["---"] * n_cols) + "|",
+    ]
+    lines.extend("| " + " | ".join(row) + " |" for row in data_rows)
+    return "\n".join(lines)
+
+
+def _extract_pdf_pages_with_tables(path: Path) -> List[Tuple[str, int]]:
+    """Extract each page's body text (tables excluded) plus every table on that
+    page rendered as markdown, appended below the text. Uses pdfplumber's
+    bounding-box filtering so table cell text isn't duplicated in the body text.
+    """
+    def _not_within_table_bboxes(bboxes):
+        def _in_bbox(obj, bbox):
+            v_mid = (obj["top"] + obj["bottom"]) / 2
+            h_mid = (obj["x0"] + obj["x1"]) / 2
+            x0, top, x1, bottom = bbox
+            return (x0 <= h_mid < x1) and (top <= v_mid < bottom)
+
+        def _filter(obj):
+            return not any(_in_bbox(obj, bbox) for bbox in bboxes)
+        return _filter
+
+    pages: List[Tuple[str, int]] = []
+    with pdfplumber.open(str(path)) as pdf:
+        for page_num, page in enumerate(pdf.pages, start=1):
+            tables = page.find_tables()
+            table_md = [
+                _render_markdown_table(t.extract())
+                for t in tables
+            ]
+            table_md = [t for t in table_md if t]
+
+            if tables:
+                body_page = page.filter(_not_within_table_bboxes([t.bbox for t in tables]))
+                body_text = body_page.extract_text() or ""
+            else:
+                body_text = page.extract_text() or ""
+
+            parts = [p for p in [body_text.strip(), *table_md] if p]
+            page_text = "\n\n".join(parts)
+            if page_text.strip():
+                pages.append((page_text, page_num))
+    return pages
+
+
 class DocumentLoader:
     """
     Document loader with production-grade chunking.
-    
+
     Handles PDF loading and intelligent text chunking optimized for RAG retrieval.
     """
     
@@ -1455,69 +1520,89 @@ class DocumentLoader:
     
     def load_pdf(self, file_path: str) -> str:
         """
-        Load text content from a PDF file.
-        
+        Load text content from a PDF file, with tables rendered as inline
+        markdown so the chunker's table-preservation logic can keep them intact.
+
         Args:
             file_path: Path to the PDF file
-            
+
         Returns:
             Extracted text content from all pages
-            
+
         Raises:
             FileNotFoundError: If PDF file doesn't exist
             ValueError: If file is not a valid PDF
         """
         path = Path(file_path)
-        
+
         if not path.exists():
             raise FileNotFoundError(f"PDF file not found: {file_path}")
-        
+
         if path.suffix.lower() != '.pdf':
             raise ValueError(f"File must be a PDF: {file_path}")
-        
+
+        try:
+            pages = _extract_pdf_pages_with_tables(path)
+            return "\n\n".join(text for text, _ in pages)
+        except Exception as e:
+            logger.warning(f"pdfplumber extraction failed for {path.name} ({e}); "
+                           f"falling back to pypdf (no table detection)")
+            return self._load_pdf_pypdf(path)
+
+    def _load_pdf_pypdf(self, path: Path) -> str:
+        """Fallback path for PDFs pdfplumber can't open (e.g. malformed files)."""
         try:
             reader = PdfReader(str(path))
             text_content = []
-            
-            for page_num, page in enumerate(reader.pages, start=1):
+
+            for page in reader.pages:
                 text = page.extract_text()
                 if text and text.strip():
                     text_content.append(text)
-            
+
             return "\n\n".join(text_content)
-        
+
         except Exception as e:
             raise ValueError(f"Error reading PDF file: {str(e)}")
-    
+
     def load_pdf_with_pages(self, file_path: str) -> List[Tuple[str, int]]:
         """
-        Load PDF with page number tracking.
-        
+        Load PDF with page number tracking, tables rendered as inline markdown.
+
         Args:
             file_path: Path to the PDF file
-            
+
         Returns:
             List of (page_text, page_number) tuples
         """
         path = Path(file_path)
-        
+
         if not path.exists():
             raise FileNotFoundError(f"PDF file not found: {file_path}")
-        
+
         if path.suffix.lower() != '.pdf':
             raise ValueError(f"File must be a PDF: {file_path}")
-        
+
+        try:
+            return _extract_pdf_pages_with_tables(path)
+        except Exception as e:
+            logger.warning(f"pdfplumber extraction failed for {path.name} ({e}); "
+                           f"falling back to pypdf (no table detection)")
+            return self._load_pdf_with_pages_pypdf(path)
+
+    def _load_pdf_with_pages_pypdf(self, path: Path) -> List[Tuple[str, int]]:
+        """Fallback path for PDFs pdfplumber can't open (e.g. malformed files)."""
         try:
             reader = PdfReader(str(path))
             pages = []
-            
+
             for page_num, page in enumerate(reader.pages, start=1):
                 text = page.extract_text()
                 if text and text.strip():
                     pages.append((text, page_num))
-            
+
             return pages
-        
+
         except Exception as e:
             raise ValueError(f"Error reading PDF file: {str(e)}")
     

@@ -15,6 +15,7 @@ faiss-cpu>=1.7.4
 
 # Document processing
 pypdf>=3.17.4
+pdfplumber>=0.11.0  # table-aware PDF extraction (primary path; pypdf is the fallback)
 
 # Embeddings
 sentence-transformers>=2.3.1
