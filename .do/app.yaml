@@ -1,0 +1,38 @@
+name: nexus-backend
+region: nyc
+services:
+  - name: backend
+    github:
+      repo: AHMEDzayn-ux/RAG-new
+      branch: main
+      deploy_on_push: true
+    source_dir: backend
+    dockerfile_path: backend/Dockerfile
+    http_port: 8080
+    instance_size_slug: basic-xs # ~1GB RAM - verify slug/price in the DO console, naming shifts over time
+    instance_count: 1
+    envs:
+      - key: ENVIRONMENT
+        value: production
+        scope: RUN_TIME
+      - key: LOG_LEVEL
+        value: INFO
+        scope: RUN_TIME
+      - key: USE_RERANKING
+        value: "false" # 1GB is tight for both embedding + reranker models loaded together (~1.2-1.6GB combined) - flip to "true" if you upgrade to a 2GB+ instance
+        scope: RUN_TIME
+      - key: GROQ_API_KEY
+        type: SECRET
+        scope: RUN_TIME
+      - key: GOOGLE_API_KEY
+        type: SECRET
+        scope: RUN_TIME
+      - key: JWT_SECRET
+        type: SECRET
+        scope: RUN_TIME
+      - key: ADMIN_EMAIL
+        type: SECRET
+        scope: RUN_TIME
+      - key: ADMIN_PASSWORD
+        type: SECRET
+        scope: RUN_TIME
