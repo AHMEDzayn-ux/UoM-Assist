@@ -98,3 +98,6 @@ temp/
 
 # Demo credentials (plaintext passwords, local/demo only)
 docs/DEMO_LOGINS.md
+
+# uom.lk scraper output (large: cached HTML + downloaded PDFs) - not source
+backend/scraper/output/

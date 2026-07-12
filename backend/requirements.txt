@@ -58,3 +58,6 @@ pydantic-settings>=2.1.0
 
 # WhatsApp Integration
 requests>=2.31.0
+
+# uom.lk scraper (backend/scraper/)
+beautifulsoup4>=4.12.0
