@@ -10,9 +10,9 @@ function App() {
             <Route path="/admin" element={<AdminConsole />} />
             {/* Customer-facing assistant, scoped to a single client slug */}
             <Route path="/c/:slug" element={<CustomerApp />} />
-            {/* Default: operator console */}
-            <Route path="/" element={<Navigate to="/admin" replace />} />
-            <Route path="*" element={<Navigate to="/admin" replace />} />
+            {/* Default: the public UoM student assistant */}
+            <Route path="/" element={<Navigate to="/c/uom" replace />} />
+            <Route path="*" element={<Navigate to="/c/uom" replace />} />
         </Routes>
     );
 }
